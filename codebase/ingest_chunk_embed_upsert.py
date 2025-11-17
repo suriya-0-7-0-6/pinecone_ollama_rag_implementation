@@ -81,7 +81,6 @@ def embed_and_upsert_docs(
 
             id_to_text[cid] = {
                 "id": cid,
-                "text": chunk_text,
                 "metadata": metadata
             }
             ids_buffer.append(cid)

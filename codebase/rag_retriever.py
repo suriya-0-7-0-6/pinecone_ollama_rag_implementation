@@ -12,7 +12,7 @@ PINECONE_API_KEY = os.getenv('PINECONE_API_KEY')
 PINECONE_INDEX = os.getenv('PINECONE_INDEX')
 PINECONE_REGION = os.getenv('PINECONE_REGION')
 EMBEDDING_MODEL_NAME = os.getenv('EMBEDDING_MODEL_NAME')
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/chat")
 
 print(f"\n🔧 Loaded environment:")
 print(f"  Pinecone Index: {PINECONE_INDEX}")
@@ -50,11 +50,12 @@ def retrieve_relevant_chunks(query_embedding: List[float], top_k: int = 5):
     print(f"✅ Retrieved {len(matches)} matches.")
     context_chunks = []
     for match in matches:
-        chunk_text = match["metadata"].get("text") or id_to_text.get(match["id"], "")
+        chunk_text = match["metadata"].get("text") or id_to_text[match["id"]]["text"]
         score = match["score"]
-        context_chunks.append((chunk_text, score))
+        context_chunks.append(chunk_text)
         print(f"   - ID: {match['id']}  (Score: {score:.4f})")
     return context_chunks
+
 
 def build_prompt(query_text, retrieved_chunks):
     context_text = "\n\n".join(retrieved_chunks)
@@ -72,9 +73,42 @@ User Query: {query_text}
     return prompt.strip()
 
 
-query_embedding = generate_query_embedding("What are the five Blue Zones?")
-context_chunks = retrieve_relevant_chunks(query_embedding, top_k=5)
+def query_ollama(prompt, model_name="gemma:2b"):
+    """Sends the prompt to Ollama’s local API."""
+    print(f"\n⚡ Sending request to Ollama model: {model_name}")
+    payload = {
+        "model": model_name,
+        "messages": [
+            {"role": "user", "content": prompt}
+        ],
+        "stream": False
+    }
+    response = requests.post(OLLAMA_URL, json=payload)
+    response.raise_for_status()
+    print(response.json())
+    output = response.json()["message"]["content"]
+    print("✅ Received response from Ollama.")
+    return output
 
-print("\n📄 Retrieved Context Chunks:")
-for i, (chunk, score) in enumerate(context_chunks):
-    print(f"\n--- Chunk {i+1} (Score: {score:.4f}) ---\n{chunk}\n")
+
+def rag_pipeline(user_query):
+    """End-to-end RAG flow: query → retrieve → prompt → generate."""
+    query_emb = generate_query_embedding(user_query)
+    retrieved_chunks = retrieve_relevant_chunks(query_emb, top_k=3)
+    prompt = build_prompt(user_query, retrieved_chunks)
+    response = query_ollama(prompt)
+    return response
+
+
+if __name__ == "__main__":
+    print("\n🚀 RAG System Ready!")
+    while True:
+        query = input("\n🧾 Enter your question (or 'exit' to quit): ")
+        if query.lower() == "exit":
+            print("👋 Exiting RAG assistant.")
+            break
+
+        answer = rag_pipeline(query)
+        print("\n💬 Final Answer:")
+        print(answer)
+        print("\n" + "-" * 80)
