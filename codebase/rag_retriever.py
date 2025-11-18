@@ -70,10 +70,11 @@ If the answer is not in the context, say "I couldn't find relevant information."
 User Query: {query_text}
 """
     print("\n🧩 Prompt constructed successfully.")
+    print(f"Prompt: {prompt}")
     return prompt.strip()
 
 
-def query_ollama(prompt, model_name="gemma:2b"):
+def query_ollama(prompt, model_name="gpt-oss:20b"):
     """Sends the prompt to Ollama’s local API."""
     print(f"\n⚡ Sending request to Ollama model: {model_name}")
     payload = {
