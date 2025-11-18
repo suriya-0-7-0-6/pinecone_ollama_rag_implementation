@@ -5,6 +5,7 @@ from typing import List, Dict, Tuple, Iterable
 from tqdm import tqdm
 from dotenv import load_dotenv
 
+import numpy as np
 from sentence_transformers import SentenceTransformer
 from pinecone import Pinecone
 from pinecone.models import ServerlessSpec
@@ -30,6 +31,13 @@ BATCH_SIZE = int(os.getenv('BATCH_SIZE'))
 SAVE_MAPPING_PATH = os.getenv('SAVE_MAPPING_PATH')
 
 print(PINECONE_API_KEY, PINECONE_INDEX, PINECONE_REGION, EMBEDDING_MODEL_NAME, CHUNK_SIZE_CHARS, CHUNK_OVERLAP_CHARS, BATCH_SIZE, SAVE_MAPPING_PATH)
+
+def l2_normalize(vec):
+    """Return vector normalized to unit length"""
+    vec = np.array(vec)
+    return (vec / (np.inalg.norm(vec) + 1e-10)).tolist()
+
+
 def embed_and_upsert_docs(
         files: Iterable[Path],
         model: SentenceTransformer,
@@ -45,7 +53,6 @@ def embed_and_upsert_docs(
     meta_buffer = []
     ids_buffer = []
 
-    total_chunks = 0
 
     for file_path in files:
         fname = file_path.name
@@ -58,38 +65,39 @@ def embed_and_upsert_docs(
 
         text = text.replace("\r\n", "\n").strip()
         if not text:
+            print("Empty content, skipping.")
             continue
 
         chunks = chunk_text_by_chars(text, chunk_size, overlap)
         print(f"  - {len(chunks)} chunks created.")
 
-        doc_namespace = namespace  # or f"{namespace}__{fname}"
         for idx, (start, end, chunk_text) in enumerate(chunks):
             # Build unique ID: safe characters only
             safe_fname = fname.replace(" ", "_")
             cid = f"{safe_fname}__chunk_{idx}"
-            total_chunks += 1
 
             metadata = {
                 "source": fname,
                 "chunk_index": idx,
                 "start_char": int(start),
                 "end_char": int(end),
-                "namespace": doc_namespace,
-                "text": chunk_text
+                "namespace": namespace,
+                "tokens": chunk_text.lower().split()
             }
 
             id_to_text[cid] = {
                 "id": cid,
+                "text": chunk_text,
                 "metadata": metadata
             }
+
             ids_buffer.append(cid)
             meta_buffer.append(metadata)
             vectors_buffer.append(chunk_text)
 
             if len(vectors_buffer) >= batch_size:
                 embed_and_upsert_batch(
-                    vectors_buffer, ids_buffer, meta_buffer, model, pc_index, doc_namespace
+                    vectors_buffer, ids_buffer, meta_buffer, model, pc_index, namespace
                 )
                 with open(save_mapping_path, "a", encoding="utf-8") as f:
                     for entry in id_to_text.values():
@@ -105,24 +113,26 @@ def embed_and_upsert_docs(
             for entry in id_to_text.values():
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
         id_to_text = {}
+        ids_buffer, meta_buffer, vectors_buffer = [], [], []
 
 
 def embed_and_upsert_batch(texts: List[str], ids: List[str], metadata_list: List[Dict], model: SentenceTransformer, pc_index, namespace: str):
     print(f"Embedding and upserting batch of {len(texts)} vectors...")
     embeddings = model.encode(texts, show_progress_bar=False, batch_size=32)
     embeddings = [e.tolist() if hasattr(e, "tolist") else list(e) for e in embeddings]
+    embeddings = [l2_normalize(e) for e in embeddings]
     upsert_tuples = []
-    for id, embedding, metadata in zip(ids, embeddings, metadata_list):
-        upsert_tuples.append((id, embedding, metadata))
+    for cid, embedding, metadata in zip(ids, embeddings, metadata_list):
+        upsert_tuples.append((cid, embedding, metadata))
 
     try:
         pc_index.upsert(vectors=upsert_tuples, namespace=namespace)
     except Exception as e:
         print(f"Upsert error (attempting retry): {e}")
-        chunk_size = 32
-        for i in range(0, len(upsert_tuples), chunk_size):
-            batch = upsert_tuples[i:i + chunk_size]
+        mini_batch_size = 16
+        for i in range(0, len(upsert_tuples), mini_batch_size):
             try:
+                batch = upsert_tuples[i:i + mini_batch_size]
                 pc_index.upsert(vectors=batch, namespace=namespace)
             except Exception as e:
                 print(f"  - Failed to upsert batch starting at index {i}: {e}")
