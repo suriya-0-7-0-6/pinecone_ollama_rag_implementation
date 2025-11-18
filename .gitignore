@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.env
+venv/
+.venv/
+
+# Docker
+*.tar
+*.log
+*.pid
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Bytecode
+*.py[cod]
+*$py.class
+
+# Cache
+.cache/
+
+ollama_models
