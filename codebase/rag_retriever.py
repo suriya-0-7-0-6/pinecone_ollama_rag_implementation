@@ -269,7 +269,6 @@ def query_ollama(prompt: str, model_name: str = "gpt-oss:20b") -> str:
     response = requests.post(OLLAMA_URL, json=payload)
     response.raise_for_status()
     response_json = response.json()
-    print(f"respose_json: {response_json}")
     if "message" in response_json and "content" in response_json["message"]:
         return response_json["message"]["content"]
     if "response" in response_json:
