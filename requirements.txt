@@ -49,3 +49,4 @@ transformers
 triton
 typing_extensions
 urllib3
+rank_bm25

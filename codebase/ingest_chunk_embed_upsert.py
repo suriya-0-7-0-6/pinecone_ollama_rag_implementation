@@ -35,7 +35,7 @@ print(PINECONE_API_KEY, PINECONE_INDEX, PINECONE_REGION, EMBEDDING_MODEL_NAME, C
 def l2_normalize(vec):
     """Return vector normalized to unit length"""
     vec = np.array(vec)
-    return (vec / (np.inalg.norm(vec) + 1e-10)).tolist()
+    return (vec / (np.linalg.norm(vec) + 1e-10)).tolist()
 
 
 def embed_and_upsert_docs(
