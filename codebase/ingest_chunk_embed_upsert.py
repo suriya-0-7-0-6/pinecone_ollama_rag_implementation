@@ -40,15 +40,15 @@ def get_environmental_variables():
         "EMBEDDING_MODEL_NAME": os.getenv('EMBEDDING_MODEL_NAME', 'all-MiniLM-L6-v2'),
         "DOCS_DIR": os.getenv('DOCS_DIR', '../uploads'),
         "NAMESPACE": os.getenv("NAMESPACE", "ikigai_corpus"),
-        "CHUNK_SIZE_CHARS": int(os.getenv('CHUNK_SIZE_CHARS'), 1000),
-        "CHUNK_OVERLAP_CHARS": int(os.getenv('CHUNK_OVERLAP_CHARS'), 200),
-        "BATCH_SIZE": int(os.getenv('BATCH_SIZE'), 10),
+        "CHUNK_SIZE_CHARS": int(os.getenv('CHUNK_SIZE_CHARS', 1000)),
+        "CHUNK_OVERLAP_CHARS": int(os.getenv('CHUNK_OVERLAP_CHARS', 200)),
+        "BATCH_SIZE": int(os.getenv('BATCH_SIZE', 10)),
         "MAPPING_FILE": os.getenv('MAPPING_FILE', 'id_to_text_map.json'),
         "DEFAULT_NAMESPACE": os.getenv('DEFAULT_NAMESPACE', 'my_corpus'),
     }
     return ENVS
 ENVS = get_environmental_variables()
-print(f"ENVS: {ENVS}")
+print(json.dumps(ENVS, indent=4))
 
 
 def l2_normalize(vec):
@@ -190,9 +190,9 @@ def main():
         model=model,
         pc_index=index,
         namespace=ENVS["NAMESPACE"],
-        chunk_size=["CHUNK_SIZE_CHARS"],
-        overlap=["CHUNK_OVERLAP_CHARS"],
-        batch_size=["BATCH_SIZE"],
+        chunk_size=ENVS["CHUNK_SIZE_CHARS"],
+        overlap=ENVS["CHUNK_OVERLAP_CHARS"],
+        batch_size=ENVS["BATCH_SIZE"],
         save_mapping_path=ENVS["MAPPING_FILE"]
     )
 
