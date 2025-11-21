@@ -9,65 +9,73 @@ from dotenv import load_dotenv
 from sentence_transformers import SentenceTransformer
 from pinecone import Pinecone
 
-try:
-    from sentence_transformers import CrossEncoder
-    CROSS_ENCODER_AVAILABLE = True
-except Exception:
-    CROSS_ENCODER_AVAILABLE = False
+# try:
+#     from sentence_transformers import CrossEncoder
+#     CROSS_ENCODER_AVAILABLE = True
+# except Exception:
+#     CROSS_ENCODER_AVAILABLE = False
 
-try:
-    from rank_bm25 import BM25Okapi
-    BM25_AVAILABLE = True
-except Exception:
-    BM25_AVAILABLE = False
+# try:
+#     from rank_bm25 import BM25Okapi
+#     BM25_AVAILABLE = True
+# except Exception:
+#     BM25_AVAILABLE = False
 
 load_dotenv()
 
-PINECONE_API_KEY = os.getenv('PINECONE_API_KEY')
-PINECONE_INDEX = os.getenv('PINECONE_INDEX')
-PINECONE_REGION = os.getenv('PINECONE_REGION')
-EMBEDDING_MODEL_NAME = os.getenv('EMBEDDING_MODEL_NAME', 'all-MiniLM-L6-v2')
-MAPPING_FILE = os.getenv('SAVE_MAPPING_PATH', 'id_to_text_map.json')
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434/api/chat")
+def get_environmental_variables():
 
-N_CANDIDATES = int(os.getenv('N_CANDIDATES', '20'))
-TOP_K_TO_RETURN = int(os.getenv('TOP_K_TO_RETURN', '3'))
-SCORE_THRESHOLD = float(os.getenv('SCORE_THRESHOLD', '0.20'))
-CACHE_PATH = os.getenv('QUERY_CACHE_PATH', 'query_cache.json')
-RERANKER_MODEL = os.getenv('RERANKER_MODEL', 'cross-encoder/ms-marco-MiniLM-L-6-v2')
-USE_HYBRID = os.getenv('USE_HYBRID', 'true').lower() in ('1', 'true', 'yes')
-DEFAULT_NAMESPACE = os.getenv('DEFAULT_NAMESPACE', 'my_corpus')
-ACTIVE_NAMESPACE = os.getenv('ACTIVE_NAMESPACE', DEFAULT_NAMESPACE)
-NAMESPACE_FILE = os.getenv('NAMESPACE_FILE', 'namespaces.json')
-MONITORING_FILE = os.getenv('MONITORING_FILE', 'monitoring_logs.jsonl')
+    ENVS = {
+        "PINECONE_API_KEY": os.getenv('PINECONE_API_KEY'),
+        "PINECONE_INDEX": os.getenv('PINECONE_INDEX'),
+        "PINECONE_REGION": os.getenv('PINECONE_REGION'),
+        "EMBEDDING_MODEL_NAME": os.getenv('EMBEDDING_MODEL_NAME', 'all-MiniLM-L6-v2'),
+        "MAPPING_FILE": os.getenv('MAPPING_FILE', 'id_to_text_map.json'),
+        "OLLAMA_URL": os.getenv("OLLAMA_URL", "http://localhost:11434/api/chat"),
+        "N_CANDIDATES": int(os.getenv('N_CANDIDATES', '20')),
+        "TOP_K_TO_RETURN": int(os.getenv('TOP_K_TO_RETURN', '3')),
+        "SCORE_THRESHOLD": float(os.getenv('SCORE_THRESHOLD', '0.20')),
+        "CACHE_PATH": os.getenv('QUERY_CACHE_PATH', 'query_cache.json'),
+        "RERANKER_MODEL": os.getenv('RERANKER_MODEL', 'cross-encoder/ms-marco-MiniLM-L-6-v2'),
+        "CROSS_ENCODER_AVAILABLE": os.getenv('CROSS_ENCODER_AVAILABLE', True),
+        "BM25_AVAILABLE": os.getenv('BM25_AVAILABLE', True),
+        "USE_HYBRID": os.getenv('USE_HYBRID', 'true').lower() in ('1', 'true', 'yes'),
+        "DEFAULT_NAMESPACE": os.getenv('DEFAULT_NAMESPACE', 'my_corpus'),
+        "NAMESPACE_FILE": os.getenv('NAMESPACE_FILE', 'namespaces.json'),
+        "MONITORING_FILE": os.getenv('MONITORING_FILE', 'monitoring_logs.jsonl'),
+    }
+    return ENVS
+ENVS = get_environmental_variables()
+
 
 print("\n🔧 Loaded environment:")
-print(f"  Pinecone Index: {PINECONE_INDEX}")
-print(f"  Ollama URL: {OLLAMA_URL}")
-print(f"  Embedding model: {EMBEDDING_MODEL_NAME}")
-print(f"  Reranker available: {CROSS_ENCODER_AVAILABLE}, BM25 available: {BM25_AVAILABLE}")
-print(f"  Hybrid enabled: {USE_HYBRID}\n")
+print(f"  Pinecone Index: {ENVS['PINECONE_INDEX']}")
+print(f"  Ollama URL: {ENVS['OLLAMA_URL']}")
+print(f"  Embedding model: {ENVS['EMBEDDING_MODEL_NAME']}")
+print(f"  Reranker available: {ENVS['CROSS_ENCODER_AVAILABLE']}, BM25 available: {ENVS['BM25_AVAILABLE']}")
+print(f"  Hybrid enabled: {ENVS['USE_HYBRID']}\n")
 
-pc = Pinecone(api_key=PINECONE_API_KEY)
-index = pc.Index(PINECONE_INDEX)
-model = SentenceTransformer(EMBEDDING_MODEL_NAME)
+pc = Pinecone(api_key=ENVS["PINECONE_API_KEY"])
+index = pc.Index(ENVS["PINECONE_INDEX"])
+model = SentenceTransformer(ENVS["EMBEDDING_MODEL_NAME"])
 
 
 def check_if_reranker_available():
-    if CROSS_ENCODER_AVAILABLE:
+    if ENVS["CROSS_ENCODER_AVAILABLE"]:
         try:
-            RERANKER = CrossEncoder(RERANKER_MODEL)
-            print(f"Cross-encode loaded: {RERANKER_MODEL}")
+            from sentence_transformers import CrossEncoder
+            RERANKER = CrossEncoder(ENVS["RERANKER_MODEL"])
+            print(f"Cross-encode loaded: {ENVS['RERANKER_MODEL']}")
         except Exception as e:
-            print(f"Failed to load cross-encode {RERANKER_MODEL}: {e}")
+            print(f"Failed to load cross-encode {ENVS['RERANKER_MODEL']}: {e}")
             RERANKER = None
     return RERANKER
 RERANKER = check_if_reranker_available()
 
 def load_query_cache():
     try:
-        if os.path.exists(CACHE_PATH):
-            with open(CACHE_PATH, 'r', encoding='utf-8') as f:
+        if os.path.exists(["CACHE_PATH"]):
+            with open(ENVS["CACHE_PATH"], 'r', encoding='utf-8') as f:
                 QUERY_CACHE = json.load(f)
         else:
             QUERY_CACHE = {}
@@ -80,28 +88,28 @@ QUERY_CACHE = load_query_cache()
 
 def load_namespace_config():
     namespace_configs = {}
-    if os.path.exists(NAMESPACE_FILE):
-        with open(NAMESPACE_FILE, 'r') as f:
+    if os.path.exists(ENVS["NAMESPACE_FILE"]):
+        with open(ENVS["NAMESPACE_FILE"], 'r') as f:
             namespace_configs = json.load(f)
     else:
         namespace_configs = {
-            'active_namespace': DEFAULT_NAMESPACE,
-            'allowed_namespaces': [DEFAULT_NAMESPACE]
+            'active_namespace': ENVS["DEFAULT_NAMESPACE"],
+            'allowed_namespaces': [ENVS["DEFAULT_NAMESPACE"]]
         }
     return namespace_configs
 NAMESPACE_CONFIG = load_namespace_config()
 
 
 def get_active_namespace():
-    print(f"Active Namespace set to: {NAMESPACE_CONFIG.get("active_namespace", DEFAULT_NAMESPACE)}")
-    return NAMESPACE_CONFIG.get("active_namespace", DEFAULT_NAMESPACE)
+    print(f"Active Namespace set to: {NAMESPACE_CONFIG.get('active_namespace', ENVS['DEFAULT_NAMESPACE'])}")
+    return NAMESPACE_CONFIG.get("active_namespace", ENVS["DEFAULT_NAMESPACE"])
 
 
 def set_namespace(namespace: str):
     if namespace not in NAMESPACE_CONFIG['allowed_namespaces']:
         NAMESPACE_CONFIG['allowed_namespaces'].append(namespace)
     NAMESPACE_CONFIG['active_namespace'] = namespace
-    with open(NAMESPACE_FILE, 'w') as f:
+    with open(ENVS["NAMESPACE_FILE"], 'w') as f:
         json.dump(NAMESPACE_CONFIG, f, indent=2)
     print(f"🌐 Active namespace set to: {namespace}")
 
@@ -133,25 +141,31 @@ def get_data(mapping_file, bm25_available):
         print(f"📂 Loaded mapping for {len(id_to_text)} chunks from {mapping_file}")
         return id_to_text, doc_ids_ordered, doc_texts_ordered, doc_tokens_ordered
     else:
-        print(f"⚠️ Mapping file '{MAPPING_FILE}' not found. Retrieval will still use metadata if present in Pinecone.")
+        print(f"⚠️ Mapping file '{ENVS['MAPPING_FILE']}' not found. Retrieval will still use metadata if present in Pinecone.")
         return id_to_text, doc_ids_ordered, doc_texts_ordered, doc_tokens_ordered
-id_to_text, doc_ids_ordered, doc_texts_ordered, doc_tokens_ordered = get_data(MAPPING_FILE, BM25_AVAILABLE)
+id_to_text, doc_ids_ordered, doc_texts_ordered, doc_tokens_ordered = get_data(ENVS["MAPPING_FILE"], ENVS["BM25_AVAILABLE"])
 
 
-bm25 = None
-if BM25_AVAILABLE and USE_HYBRID and len(doc_tokens_ordered) > 0:
-    bm25 = BM25Okapi(doc_tokens_ordered)
-    print("✅ BM25 index built for hybrid retrieval.")
+def check_if_bm25_availability_and_build_index():
+    if ENVS["BM25_AVAILABLE"] and ENVS["USE_HYBRID"] and len(doc_tokens_ordered) > 0:
+        from rank_bm25 import BM25Okapi
+        bm25 = BM25Okapi(doc_tokens_ordered)
+        print("✅ BM25 index built for hybrid retrieval.")
+        return bm25
+    else:
+        print("BM25 not available. Skipping hybrid search!")
+        return None
+bm25 = check_if_bm25_availability_and_build_index()
 
 
-def log_event(event: Dict, MONITORING_FILE: str = MONITORING_FILE):
+def log_event(event: Dict, MONITORING_FILE: str = ENVS["MONITORING_FILE"]):
     event['time'] = time.strftime("%Y-%m-%d %H:%M:%S")
     with open(MONITORING_FILE, 'a', encoding='utf-8') as f:
         f.write(json.dumps(event, ensure_ascii=False) + "\n")
 
 
 def save_cache():
-    with open(CACHE_PATH, "w", encoding="utf-8") as f:
+    with open(ENVS["CACHE_PATH"], "w", encoding="utf-8") as f:
         json.dump(QUERY_CACHE, f, ensure_ascii=False, indent=2)
     
 
@@ -195,7 +209,7 @@ def apply_metadata_filter(results: dict, metadata_filter: Optional[Dict]) -> Lis
 
 
 def get_bm25_score_for_cid(cid: str, query:str) -> float:
-    if not (BM25_AVAILABLE and bm25):
+    if not (ENVS["BM25_AVAILABLE"] and bm25):
         return 0.0
     try:
         idx = doc_ids_ordered.index(cid)
@@ -218,20 +232,19 @@ def normalize_scores(values: List[float]) -> List[float]:
     return norm.tolist()
 
 
-def retrieve_candidates(query_embedding: List[float], query_text: str, top_k: int = 5, metadata_filter: Optional[Dict] = None, min_score: float = SCORE_THRESHOLD) -> List[Tuple[str, float]]:
+def retrieve_candidates(query_embedding: List[float], query_text: str, top_k: int = 5, metadata_filter: Optional[Dict] = None, min_score: float = ENVS["SCORE_THRESHOLD"]) -> List[Tuple[str, float]]:
     namespace = get_active_namespace()
     print(f"\n🔍 Querying namespace: {namespace}")
     pinecone_filter = metadata_filter if metadata_filter else None
-    print(f"\n🔍 Querying Pinecone (top {N_CANDIDATES}) — applying server-side filter: {bool(pinecone_filter)}")
+    print(f"\n🔍 Querying Pinecone (top {ENVS['N_CANDIDATES']}) — applying server-side filter: {bool(pinecone_filter)}")
     res = index.query(
         vector=query_embedding,
-        top_k=N_CANDIDATES,
+        top_k=ENVS["N_CANDIDATES"],
         include_metadata=True,
         filter=pinecone_filter,
         namespace=namespace
     )
     matches = res.get("matches", [])
-    print(matches)
     print(f"  → Pinecone returned {len(matches)} matches")
 
     if len(matches) == 0:
@@ -249,7 +262,7 @@ def retrieve_candidates(query_embedding: List[float], query_text: str, top_k: in
         vector_scores.append(score)
 
     hybrid_scores = []
-    if USE_HYBRID and BM25_AVAILABLE:
+    if ENVS["USE_HYBRID"] and ENVS["BM25_AVAILABLE"]:
         bm25_raw = [get_bm25_score_for_cid(cid, query_text) for cid in candidate_ids]
         bm25_norm = normalize_scores(bm25_raw)
         alpha = 0.75
@@ -268,7 +281,6 @@ def retrieve_candidates(query_embedding: List[float], query_text: str, top_k: in
                 "hybrid_score": hs
             })
     print(f"  → {len(candidates)} candidates remain after threshold >= {min_score}")
-    print(candidates)
     if len(candidates) == 0:
         return []
         
@@ -320,7 +332,7 @@ def query_ollama(prompt: str, model_name: str = "gpt-oss:20b") -> str:
         ],
         "stream": False
     }
-    response = requests.post(OLLAMA_URL, json=payload)
+    response = requests.post(ENVS["OLLAMA_URL"], json=payload)
     response.raise_for_status()
     response_json = response.json()
     if "message" in response_json and "content" in response_json["message"]:
@@ -339,10 +351,10 @@ def rag_pipeline(user_query: str, metadata_filter: Optional[Dict] = None, intera
     
     t0 = time.time()
     query_embedding = generate_query_embedding(user_query)
-    candidates = retrieve_candidates(query_embedding, user_query, top_k=TOP_K_TO_RETURN, metadata_filter=metadata_filter)
+    candidates = retrieve_candidates(query_embedding, user_query, top_k=ENVS["TOP_K_TO_RETURN"], metadata_filter=metadata_filter)
     if not candidates:
         print("⚠️ No candidates found — relaxing threshold and retrying without metadata filter.")
-        candidates = retrieve_candidates(query_embedding, user_query, top_k=TOP_K_TO_RETURN, metadata_filter=None, min_score=0.0)
+        candidates = retrieve_candidates(query_embedding, user_query, top_k=ENVS["TOP_K_TO_RETURN"], metadata_filter=None, min_score=0.0)
         if not candidates:
             ans = "I couldn't find relevant information."
             QUERY_CACHE[ck] = ans

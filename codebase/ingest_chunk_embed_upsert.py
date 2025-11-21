@@ -19,21 +19,39 @@ from bs4 import BeautifulSoup
 
 load_dotenv()
 
-PINECONE_API_KEY = os.getenv('PINECONE_API_KEY')
-PINECONE_INDEX = os.getenv('PINECONE_INDEX')
-PINECONE_REGION = os.getenv('PINECONE_REGION')
-EMBEDDING_MODEL_NAME = os.getenv('EMBEDDING_MODEL_NAME')
-DOCS_DIR = "../uploads"
-NAMESPACE = "ikigai_corpus"
-CHUNK_SIZE_CHARS = int(os.getenv('CHUNK_SIZE_CHARS'))
-CHUNK_OVERLAP_CHARS = int(os.getenv('CHUNK_OVERLAP_CHARS'))
-BATCH_SIZE = int(os.getenv('BATCH_SIZE'))
-SAVE_MAPPING_PATH = os.getenv('SAVE_MAPPING_PATH')
+# PINECONE_API_KEY = os.getenv('PINECONE_API_KEY')
+# PINECONE_INDEX = os.getenv('PINECONE_INDEX')
+# PINECONE_REGION = os.getenv('PINECONE_REGION')
+# EMBEDDING_MODEL_NAME = os.getenv('EMBEDDING_MODEL_NAME')
+# DOCS_DIR = "../uploads"
+# NAMESPACE = "ikigai_corpus"
+# CHUNK_SIZE_CHARS = int(os.getenv('CHUNK_SIZE_CHARS'))
+# CHUNK_OVERLAP_CHARS = int(os.getenv('CHUNK_OVERLAP_CHARS'))
+# BATCH_SIZE = int(os.getenv('BATCH_SIZE'))
+# MAPPING_FILE = os.getenv('MAPPING_FILE')
 
-print(PINECONE_API_KEY, PINECONE_INDEX, PINECONE_REGION, EMBEDDING_MODEL_NAME, CHUNK_SIZE_CHARS, CHUNK_OVERLAP_CHARS, BATCH_SIZE, SAVE_MAPPING_PATH)
+load_dotenv()
+
+def get_environmental_variables():
+    ENVS = {
+        "PINECONE_API_KEY": os.getenv('PINECONE_API_KEY'),
+        "PINECONE_INDEX": os.getenv('PINECONE_INDEX'),
+        "PINECONE_REGION": os.getenv('PINECONE_REGION'),
+        "EMBEDDING_MODEL_NAME": os.getenv('EMBEDDING_MODEL_NAME', 'all-MiniLM-L6-v2'),
+        "DOCS_DIR": os.getenv('DOCS_DIR', '../uploads'),
+        "NAMESPACE": os.getenv("NAMESPACE", "ikigai_corpus"),
+        "CHUNK_SIZE_CHARS": int(os.getenv('CHUNK_SIZE_CHARS'), 1000),
+        "CHUNK_OVERLAP_CHARS": int(os.getenv('CHUNK_OVERLAP_CHARS'), 200),
+        "BATCH_SIZE": int(os.getenv('BATCH_SIZE'), 10),
+        "MAPPING_FILE": os.getenv('MAPPING_FILE', 'id_to_text_map.json'),
+        "DEFAULT_NAMESPACE": os.getenv('DEFAULT_NAMESPACE', 'my_corpus'),
+    }
+    return ENVS
+ENVS = get_environmental_variables()
+print(f"ENVS: {ENVS}")
+
 
 def l2_normalize(vec):
-    """Return vector normalized to unit length"""
     vec = np.array(vec)
     return (vec / (np.linalg.norm(vec) + 1e-10)).tolist()
 
@@ -43,10 +61,10 @@ def embed_and_upsert_docs(
         model: SentenceTransformer,
         pc_index,
         namespace: str = "default",
-        chunk_size: int = CHUNK_SIZE_CHARS,
-        overlap: int = CHUNK_OVERLAP_CHARS,
-        batch_size: int = BATCH_SIZE,
-        save_mapping_path: str = SAVE_MAPPING_PATH,
+        chunk_size: int = ENVS["CHUNK_SIZE_CHARS"],
+        overlap: int = ENVS["CHUNK_OVERLAP_CHARS"],
+        batch_size: int = ENVS["BATCH_SIZE"],
+        save_mapping_path: str = ENVS["MAPPING_FILE"],
 ):
     id_to_text = {}
     vectors_buffer = []
@@ -140,28 +158,28 @@ def embed_and_upsert_batch(texts: List[str], ids: List[str], metadata_list: List
 
 
 def main():
-    pc = Pinecone(api_key=PINECONE_API_KEY)
+    pc = Pinecone(api_key=ENVS["PINECONE_API_KEY"])
 
     print("Listing existing Pinecone indexes...")
     existing = [i["name"] for i in pc.list_indexes()]    
     print(f"Existing indexes: {existing}")
-    if PINECONE_INDEX not in existing:
+    if ENVS["PINECONE_INDEX"] not in existing:
         pc.create_index(
-            name=PINECONE_INDEX,
+            name=ENVS["PINECONE_INDEX"],
             dimension=384,
             metric="cosine",
-            spec=ServerlessSpec(cloud="aws", region=PINECONE_REGION)
+            spec=ServerlessSpec(cloud="aws", region=ENVS["PINECONE_REGION"])
         )
     else:
-        print(f"Index {PINECONE_INDEX} already exists. Reusing it.")
+        print(f"Index {ENVS['PINECONE_INDEX']} already exists. Reusing it.")
 
-    index = pc.Index(PINECONE_INDEX)
+    index = pc.Index(ENVS["PINECONE_INDEX"])
 
-    print(f"Loading embedding mode: {EMBEDDING_MODEL_NAME}...")
-    model = SentenceTransformer(EMBEDDING_MODEL_NAME)
+    print(f"Loading embedding mode: {ENVS['EMBEDDING_MODEL_NAME']}...")
+    model = SentenceTransformer(ENVS["EMBEDDING_MODEL_NAME"])
     print("Model loaded.")
 
-    doc_dir = Path(DOCS_DIR)
+    doc_dir = Path(ENVS["DOCS_DIR"])
     all_files = [file for file in doc_dir.rglob("*") if file.suffix.lower() in [".txt", ".pdf", ".html", ".htm"]]
     
     print(f"Found {len(all_files)} files to process.")
@@ -171,11 +189,11 @@ def main():
         files=all_files,
         model=model,
         pc_index=index,
-        namespace=NAMESPACE,
-        chunk_size=CHUNK_SIZE_CHARS,
-        overlap=CHUNK_OVERLAP_CHARS,
-        batch_size=BATCH_SIZE,
-        save_mapping_path=SAVE_MAPPING_PATH
+        namespace=ENVS["NAMESPACE"],
+        chunk_size=["CHUNK_SIZE_CHARS"],
+        overlap=["CHUNK_OVERLAP_CHARS"],
+        batch_size=["BATCH_SIZE"],
+        save_mapping_path=ENVS["MAPPING_FILE"]
     )
 
 if __name__ == "__main__":  

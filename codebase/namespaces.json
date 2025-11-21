@@ -1,9 +1,8 @@
 {
-  "active_namespace": "ikigai_corpus",
+  "active_namespace": "my_base_corpus",
   "allowed_namespaces": [
-    "my_corpus",
-    "basic_namespace",
-    "ikigai_corpus",
-    "dump"
+    "my_base_corpus",
+    "my_namespace",
+    "ikigai_corpus"
   ]
 }
