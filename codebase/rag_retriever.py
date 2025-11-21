@@ -36,6 +36,10 @@ SCORE_THRESHOLD = float(os.getenv('SCORE_THRESHOLD', '0.20'))
 CACHE_PATH = os.getenv('QUERY_CACHE_PATH', 'query_cache.json')
 RERANKER_MODEL = os.getenv('RERANKER_MODEL', 'cross-encoder/ms-marco-MiniLM-L-6-v2')
 USE_HYBRID = os.getenv('USE_HYBRID', 'true').lower() in ('1', 'true', 'yes')
+DEFAULT_NAMESPACE = os.getenv('DEFAULT_NAMESPACE', 'my_corpus')
+ACTIVE_NAMESPACE = os.getenv('ACTIVE_NAMESPACE', DEFAULT_NAMESPACE)
+NAMESPACE_FILE = os.getenv('NAMESPACE_FILE', 'namespaces.json')
+MONITORING_FILE = os.getenv('MONITORING_FILE', 'monitoring_logs.jsonl')
 
 print("\n🔧 Loaded environment:")
 print(f"  Pinecone Index: {PINECONE_INDEX}")
@@ -47,56 +51,103 @@ print(f"  Hybrid enabled: {USE_HYBRID}\n")
 pc = Pinecone(api_key=PINECONE_API_KEY)
 index = pc.Index(PINECONE_INDEX)
 model = SentenceTransformer(EMBEDDING_MODEL_NAME)
-reranker = None
-if CROSS_ENCODER_AVAILABLE:
+
+
+def check_if_reranker_available():
+    if CROSS_ENCODER_AVAILABLE:
+        try:
+            RERANKER = CrossEncoder(RERANKER_MODEL)
+            print(f"Cross-encode loaded: {RERANKER_MODEL}")
+        except Exception as e:
+            print(f"Failed to load cross-encode {RERANKER_MODEL}: {e}")
+            RERANKER = None
+    return RERANKER
+RERANKER = check_if_reranker_available()
+
+def load_query_cache():
     try:
-        reranker = CrossEncoder(RERANKER_MODEL)
-        print(f"Cross-encode loaded: {RERANKER_MODEL}")
-    except Exception as e:
-        print(f"Failed to load cross-encode {RERANKER_MODEL}: {e}")
-        reranker = None
+        if os.path.exists(CACHE_PATH):
+            with open(CACHE_PATH, 'r', encoding='utf-8') as f:
+                QUERY_CACHE = json.load(f)
+        else:
+            QUERY_CACHE = {}
+        return QUERY_CACHE
+    except Exception:
+        QUERY_CACHE = {}
+        return QUERY_CACHE
+QUERY_CACHE = load_query_cache()
 
-id_to_text: Dict[str, Dict] = {}
-doc_ids_ordered: List[str] = []
-doc_texts_ordered: List[str] = []
-doc_tokens_ordered: List[str] = []
 
-if os.path.exists(MAPPING_FILE):
-    with open(MAPPING_FILE, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                item = json.loads(line)
-                cid = item.get("id")
-                text = item.get("text") or item.get("metadata", {}).get("text", "")
-                if cid:
-                    id_to_text[cid] = {"text": text, "metadata": item.get("metadata", {})}
-                    doc_ids_ordered.append(cid)
-                    doc_texts_ordered.append(text)
-                    if BM25_AVAILABLE:
-                        tokens = text.lower().split()
-                        doc_tokens_ordered.append(tokens)
-            except Exception:
-                continue
-    print(f"📂 Loaded mapping for {len(id_to_text)} chunks from {MAPPING_FILE}")
-else:
-    print(f"⚠️ Mapping file '{MAPPING_FILE}' not found. Retrieval will still use metadata if present in Pinecone.")
+def load_namespace_config():
+    namespace_configs = {}
+    if os.path.exists(NAMESPACE_FILE):
+        with open(NAMESPACE_FILE, 'r') as f:
+            namespace_configs = json.load(f)
+    else:
+        namespace_configs = {
+            'active_namespace': DEFAULT_NAMESPACE,
+            'allowed_namespaces': [DEFAULT_NAMESPACE]
+        }
+    return namespace_configs
+NAMESPACE_CONFIG = load_namespace_config()
+
+
+def get_active_namespace():
+    print(f"Active Namespace set to: {NAMESPACE_CONFIG.get("active_namespace", DEFAULT_NAMESPACE)}")
+    return NAMESPACE_CONFIG.get("active_namespace", DEFAULT_NAMESPACE)
+
+
+def set_namespace(namespace: str):
+    if namespace not in NAMESPACE_CONFIG['allowed_namespaces']:
+        NAMESPACE_CONFIG['allowed_namespaces'].append(namespace)
+    NAMESPACE_CONFIG['active_namespace'] = namespace
+    with open(NAMESPACE_FILE, 'w') as f:
+        json.dump(NAMESPACE_CONFIG, f, indent=2)
+    print(f"🌐 Active namespace set to: {namespace}")
+
+
+def get_data(mapping_file, bm25_available):
+    id_to_text = {}
+    doc_ids_ordered = []
+    doc_texts_ordered = []
+    doc_tokens_ordered = []
+    if os.path.exists(mapping_file):
+        with open(mapping_file, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    item = json.loads(line)
+                    cid = item.get("id")
+                    text = item.get("text")
+                    if cid:
+                        id_to_text[cid] = {"text": text, "metadata": item.get("metadata", {})}
+                        doc_ids_ordered.append(cid)
+                        doc_texts_ordered.append(text)
+                        if bm25_available:
+                            tokens = text.lower().split()
+                            doc_tokens_ordered.append(tokens)
+                except Exception:
+                    continue
+        print(f"📂 Loaded mapping for {len(id_to_text)} chunks from {mapping_file}")
+        return id_to_text, doc_ids_ordered, doc_texts_ordered, doc_tokens_ordered
+    else:
+        print(f"⚠️ Mapping file '{MAPPING_FILE}' not found. Retrieval will still use metadata if present in Pinecone.")
+        return id_to_text, doc_ids_ordered, doc_texts_ordered, doc_tokens_ordered
+id_to_text, doc_ids_ordered, doc_texts_ordered, doc_tokens_ordered = get_data(MAPPING_FILE, BM25_AVAILABLE)
+
 
 bm25 = None
 if BM25_AVAILABLE and USE_HYBRID and len(doc_tokens_ordered) > 0:
     bm25 = BM25Okapi(doc_tokens_ordered)
     print("✅ BM25 index built for hybrid retrieval.")
 
-try:
-    if os.path.exists(CACHE_PATH):
-        with open(CACHE_PATH, 'r', encoding='utf-8') as f:
-            QUERY_CACHE = json.load(f)
-    else:
-        QUERY_CACHE = {}
-except Exception:
-    QUERY_CACHE = {}
+
+def log_event(event: Dict, MONITORING_FILE: str = MONITORING_FILE):
+    event['time'] = time.strftime("%Y-%m-%d %H:%M:%S")
+    with open(MONITORING_FILE, 'a', encoding='utf-8') as f:
+        f.write(json.dumps(event, ensure_ascii=False) + "\n")
 
 
 def save_cache():
@@ -104,8 +155,8 @@ def save_cache():
         json.dump(QUERY_CACHE, f, ensure_ascii=False, indent=2)
     
 
-def cache_key_for(query:str, metadata_filter: Optional[Dict]=None) -> str:
-    key_obj = {"q": query, "filter": metadata_filter}
+def cache_key_for(query:str, metadata_filter: Optional[Dict]=None, namespace: str = None) -> str:
+    key_obj = {"q": query, "filter": metadata_filter, "namespace": namespace or get_active_namespace()}
     key_str = json.dumps(key_obj, sort_keys=True, ensure_ascii=False)
     return hashlib.sha256(key_str.encode()).hexdigest()
 
@@ -168,6 +219,8 @@ def normalize_scores(values: List[float]) -> List[float]:
 
 
 def retrieve_candidates(query_embedding: List[float], query_text: str, top_k: int = 5, metadata_filter: Optional[Dict] = None, min_score: float = SCORE_THRESHOLD) -> List[Tuple[str, float]]:
+    namespace = get_active_namespace()
+    print(f"\n🔍 Querying namespace: {namespace}")
     pinecone_filter = metadata_filter if metadata_filter else None
     print(f"\n🔍 Querying Pinecone (top {N_CANDIDATES}) — applying server-side filter: {bool(pinecone_filter)}")
     res = index.query(
@@ -175,9 +228,10 @@ def retrieve_candidates(query_embedding: List[float], query_text: str, top_k: in
         top_k=N_CANDIDATES,
         include_metadata=True,
         filter=pinecone_filter,
-        namespace="my_corpus"
+        namespace=namespace
     )
     matches = res.get("matches", [])
+    print(matches)
     print(f"  → Pinecone returned {len(matches)} matches")
 
     if len(matches) == 0:
@@ -186,10 +240,10 @@ def retrieve_candidates(query_embedding: List[float], query_text: str, top_k: in
     candidate_ids = []
     candidate_texts = []
     vector_scores = []
-    for m in matches:
-        cid = m.get("id")
-        text = m.get("metadata", {}).get("text") or id_to_text.get("cid", {}).get("text", "")
-        score = float(m.get("score", 0.0))
+    for match in matches:
+        cid = match.get("id")
+        text = match.get("metadata", {}).get("text") or id_to_text.get(cid, {}).get("text", "")
+        score = float(match.get("score", 0.0))
         candidate_ids.append(cid)
         candidate_texts.append(text)
         vector_scores.append(score)
@@ -214,15 +268,15 @@ def retrieve_candidates(query_embedding: List[float], query_text: str, top_k: in
                 "hybrid_score": hs
             })
     print(f"  → {len(candidates)} candidates remain after threshold >= {min_score}")
-
+    print(candidates)
     if len(candidates) == 0:
         return []
         
-    if reranker is not None:
+    if RERANKER is not None:
         chunk_texts = [c["text"] for c in candidates]
         pairs = [[query_text, ct] for ct in chunk_texts]
         try:
-            reranker_scores = reranker.predict(pairs)
+            reranker_scores = RERANKER.predict(pairs)
             for c, r in zip(candidates, reranker_scores):
                 c["rerank_score"] = float(r)
             candidates = sorted(candidates, key=lambda x: x["rerank_score"], reverse=True)
@@ -278,7 +332,8 @@ def query_ollama(prompt: str, model_name: str = "gpt-oss:20b") -> str:
 
 
 def rag_pipeline(user_query: str, metadata_filter: Optional[Dict] = None, interactive_cache: bool = True) -> str:
-    ck = cache_key_for(user_query, metadata_filter)
+    namespace = get_active_namespace()
+    ck = cache_key_for(user_query, metadata_filter, namespace)
     if interactive_cache and ck in QUERY_CACHE:
         return QUERY_CACHE[ck]
     
@@ -301,6 +356,14 @@ def rag_pipeline(user_query: str, metadata_filter: Optional[Dict] = None, intera
     save_cache()
     dt = time.time() - t0
     print(f"\n✅ RAG complete (took {dt:.2f}s).")
+    log_event({
+        "query": user_query,
+        "namespace": namespace,
+        "used_cache": ck in QUERY_CACHE,
+        "num_candidates": len(candidates),
+        "metadata_filter": metadata_filter,
+        "latency_seconds": round(dt, 3)
+    })
     return answer
 
 
@@ -323,6 +386,16 @@ if __name__ == "__main__":
                 continue
         else:
             user_query = user_query
+
+        if user_query.startswith("/ns"):
+            try:
+                _, namespace = user_query.split(" ", 1)
+                namespace = namespace.strip()
+                set_namespace(namespace)
+                continue
+            except:
+                print(f"⚠️ Usage: /ns {namespace}")
+                continue
 
         answer = rag_pipeline(user_query, metadata_filter=metadata_filter)
 

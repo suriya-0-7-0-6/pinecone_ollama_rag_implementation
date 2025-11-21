@@ -1,0 +1,10 @@
+{"query": "What is ikigai?", "namespace": "ikigai_corpus", "used_cache": true, "num_candidates": 3, "metadata_filter": null, "latency_seconds": 14.613, "time": "2025-11-21 12:31:37"}
+{"query": "What is ikigai", "namespace": "ikigai_corpus", "used_cache": true, "num_candidates": 3, "metadata_filter": null, "latency_seconds": 8.883, "time": "2025-11-21 12:32:42"}
+{"query": "What is the purpose of life?", "namespace": "ikigai_corpus", "used_cache": true, "num_candidates": 3, "metadata_filter": null, "latency_seconds": 10.426, "time": "2025-11-21 12:33:12"}
+{"query": "\u001b[A", "namespace": "ikigai_corpus", "used_cache": true, "num_candidates": 3, "metadata_filter": null, "latency_seconds": 7.474, "time": "2025-11-21 12:36:27"}
+{"query": "what is ikigai ?", "namespace": "ikigai_corpus", "used_cache": true, "num_candidates": 3, "metadata_filter": null, "latency_seconds": 16.773, "time": "2025-11-21 12:37:52"}
+{"query": "What is ikigai?", "namespace": "ikigai_corpus", "used_cache": true, "num_candidates": 3, "metadata_filter": null, "latency_seconds": 7.789, "time": "2025-11-21 12:42:35"}
+{"query": "What is ikigai?", "namespace": "ikigai_corpus", "used_cache": true, "num_candidates": 3, "metadata_filter": null, "latency_seconds": 11.799, "time": "2025-11-21 12:44:41"}
+{"query": "What is ikigai?", "namespace": "ikigai_corpus", "used_cache": true, "num_candidates": 3, "metadata_filter": null, "latency_seconds": 18.669, "time": "2025-11-21 12:56:45"}
+{"query": "What is ikigai?", "namespace": "ikigai_corpus", "used_cache": true, "num_candidates": 3, "metadata_filter": null, "latency_seconds": 33.212, "time": "2025-11-21 12:59:29"}
+{"query": "What is ikigai ?", "namespace": "ikigai_corpus", "used_cache": true, "num_candidates": 3, "metadata_filter": null, "latency_seconds": 20.614, "time": "2025-11-21 13:00:41"}
