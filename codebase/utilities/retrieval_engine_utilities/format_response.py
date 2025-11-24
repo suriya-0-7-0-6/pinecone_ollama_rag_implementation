@@ -13,7 +13,7 @@ def format_response(app_config, response, citations, confidence, mode="hybrid", 
     
     elif style == "chat":
         formatted_sources = "\n".join([
-            f"[{c['reference']}] {c['metadata'].get('file','unknown')} (score {c['score']:.3f})"
+            f"[{c['reference']}] {c['metadata'].get('source','unknown')} (score {c['score']:.3f})"
             for c in citations
         ])
         return f"""

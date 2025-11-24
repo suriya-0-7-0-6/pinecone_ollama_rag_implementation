@@ -8,7 +8,8 @@ Rules:
 1. Use ONLY the provided context.
 2. Always cite context numbers: [1], [2], etc.
 3. If unsure or context missing, respond: "No relevant context found.".
-4. Do NOT guess or hallucinate.
+4. Give detailed response.
+5. Do NOT guess or hallucinate.
 """
     prompt = f"{SYSTEM_INSTRUCTIONS}\n\nCONTEXT:\n{context_text}\n\nUSER QUESTION:\n{query_text}\n\nASSISTANT RESPONSE:"
     return prompt.strip()
