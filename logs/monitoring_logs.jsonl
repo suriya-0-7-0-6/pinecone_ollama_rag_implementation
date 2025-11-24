@@ -14,3 +14,12 @@
 {"query": "What is ikigai?", "namespace": "ikigai_corpus", "used_cache": false, "num_candidates": 3, "metadata_filter": null, "latency_seconds": 37.308, "time": "2025-11-24 16:36:22"}
 {"query": "What is ikigai?", "namespace": "ikigai_corpus", "used_cache": false, "num_candidates": 3, "metadata_filter": null, "latency_seconds": 36.851, "time": "2025-11-24 16:37:45"}
 {"query": "What is ikigai?", "namespace": "ikigai_corpus", "used_cache": false, "num_candidates": 3, "metadata_filter": null, "latency_seconds": 65.71, "time": "2025-11-24 16:45:02"}
+{"query": "What is ikigai?", "namespace": "ikigai_corpus", "used_cache": false, "num_candidates": 1, "metadata_filter": null, "latency_seconds": 19.739, "time": "2025-11-24 17:02:09"}
+{"query": "What is ikigai?", "namespace": "", "used_cache": false, "num_candidates": 3, "metadata_filter": null, "latency_seconds": 30.072, "time": "2025-11-24 17:02:56"}
+{"query": "What is ikigai?", "namespace": "", "used_cache": false, "num_candidates": 3, "metadata_filter": null, "latency_seconds": 51.708, "time": "2025-11-24 20:04:58"}
+{"query": "what is ikigai?", "namespace": "", "used_cache": false, "num_candidates": 3, "metadata_filter": null, "latency_seconds": 39.349, "time": "2025-11-24 20:07:09"}
+{"query": "What is ikigai?", "namespace": "", "used_cache": false, "num_candidates": 5, "metadata_filter": null, "latency_seconds": 43.726, "time": "2025-11-24 20:09:36"}
+{"query": "What is ikigai?", "used_cache": true, "time": "2025-11-24 20:10:59"}
+{"query": "What is ikigai?", "namespace": "", "used_cache": false, "num_candidates": 5, "metadata_filter": null, "latency_seconds": 62.116, "time": "2025-11-24 20:25:02"}
+{"query": "What is ikigai?", "namespace": "", "used_cache": false, "num_candidates": 5, "metadata_filter": null, "latency_seconds": 42.632, "time": "2025-11-24 20:30:02"}
+{"query": "What is ikigai?", "used_cache": true, "time": "2025-11-24 20:32:42"}
