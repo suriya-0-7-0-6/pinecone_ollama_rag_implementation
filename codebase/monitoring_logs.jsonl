@@ -1,2 +1,0 @@
-{"query": "What is ikigai?", "namespace": "ikigai_corpus", "used_cache": true, "num_candidates": 3, "metadata_filter": null, "latency_seconds": 39.293, "time": "2025-11-21 16:18:39"}
-{"query": "What is this ikigai book trying to convey?", "namespace": "ikigai_corpus", "used_cache": true, "num_candidates": 3, "metadata_filter": null, "latency_seconds": 46.583, "time": "2025-11-21 16:19:59"}

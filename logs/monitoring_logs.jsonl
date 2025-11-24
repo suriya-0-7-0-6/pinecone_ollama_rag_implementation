@@ -1,0 +1,16 @@
+{"query": "What is ikigai?", "namespace": "ikigai_corpus", "used_cache": true, "num_candidates": 3, "metadata_filter": null, "latency_seconds": 39.293, "time": "2025-11-21 16:18:39"}
+{"query": "What is this ikigai book trying to convey?", "namespace": "ikigai_corpus", "used_cache": true, "num_candidates": 3, "metadata_filter": null, "latency_seconds": 46.583, "time": "2025-11-21 16:19:59"}
+{"query": "What is ikigai?", "used_cache": true, "time": "2025-11-24 12:01:31"}
+{"query": "What is ikigai?", "used_cache": true, "time": "2025-11-24 14:25:49"}
+{"query": "What is ikigai?", "used_cache": true, "time": "2025-11-24 14:41:02"}
+{"query": "What is ikigai?", "used_cache": true, "time": "2025-11-24 14:41:16"}
+{"query": "ikigai?", "used_cache": true, "time": "2025-11-24 14:42:45"}
+{"query": "What is ikigai?", "used_cache": true, "time": "2025-11-24 14:44:06"}
+{"query": "What is ikigai?", "used_cache": true, "time": "2025-11-24 14:45:15"}
+{"query": "What iki?", "used_cache": true, "time": "2025-11-24 14:47:30"}
+{"query": "What is ikigai?", "used_cache": true, "time": "2025-11-24 14:53:34"}
+{"query": "What iki?", "used_cache": true, "time": "2025-11-24 14:53:47"}
+{"query": "What is ikigai?", "namespace": "ikigai_corpus", "used_cache": false, "num_candidates": 3, "metadata_filter": null, "latency_seconds": 18.066, "time": "2025-11-24 16:34:32"}
+{"query": "What is ikigai?", "namespace": "ikigai_corpus", "used_cache": false, "num_candidates": 3, "metadata_filter": null, "latency_seconds": 37.308, "time": "2025-11-24 16:36:22"}
+{"query": "What is ikigai?", "namespace": "ikigai_corpus", "used_cache": false, "num_candidates": 3, "metadata_filter": null, "latency_seconds": 36.851, "time": "2025-11-24 16:37:45"}
+{"query": "What is ikigai?", "namespace": "ikigai_corpus", "used_cache": false, "num_candidates": 3, "metadata_filter": null, "latency_seconds": 65.71, "time": "2025-11-24 16:45:02"}

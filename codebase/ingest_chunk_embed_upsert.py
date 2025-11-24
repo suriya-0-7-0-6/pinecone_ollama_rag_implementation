@@ -1,5 +1,6 @@
 import os
 import json
+import sys
 from pathlib import Path
 from typing import List, Dict, Tuple, Iterable
 from tqdm import tqdm
@@ -17,38 +18,29 @@ from utilities.get_structure import explore_structure
 import pdfplumber
 from bs4 import BeautifulSoup
 
-load_dotenv()
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.append(str(PROJECT_ROOT))
 
-# PINECONE_API_KEY = os.getenv('PINECONE_API_KEY')
-# PINECONE_INDEX = os.getenv('PINECONE_INDEX')
-# PINECONE_REGION = os.getenv('PINECONE_REGION')
-# EMBEDDING_MODEL_NAME = os.getenv('EMBEDDING_MODEL_NAME')
-# DOCS_DIR = "../uploads"
-# NAMESPACE = "ikigai_corpus"
-# CHUNK_SIZE_CHARS = int(os.getenv('CHUNK_SIZE_CHARS'))
-# CHUNK_OVERLAP_CHARS = int(os.getenv('CHUNK_OVERLAP_CHARS'))
-# BATCH_SIZE = int(os.getenv('BATCH_SIZE'))
-# MAPPING_FILE = os.getenv('MAPPING_FILE')
+from configs.get_envs import CONFIG
+CONFIG.ensure_directories()
 
-load_dotenv()
-
-def get_environmental_variables():
-    ENVS = {
-        "PINECONE_API_KEY": os.getenv('PINECONE_API_KEY'),
-        "PINECONE_INDEX": os.getenv('PINECONE_INDEX'),
-        "PINECONE_REGION": os.getenv('PINECONE_REGION'),
-        "EMBEDDING_MODEL_NAME": os.getenv('EMBEDDING_MODEL_NAME', 'all-MiniLM-L6-v2'),
-        "DOCS_DIR": os.getenv('DOCS_DIR', '../uploads'),
-        "NAMESPACE": os.getenv("NAMESPACE", "ikigai_corpus"),
-        "CHUNK_SIZE_CHARS": int(os.getenv('CHUNK_SIZE_CHARS', 1000)),
-        "CHUNK_OVERLAP_CHARS": int(os.getenv('CHUNK_OVERLAP_CHARS', 200)),
-        "BATCH_SIZE": int(os.getenv('BATCH_SIZE', 10)),
-        "MAPPING_FILE": os.getenv('MAPPING_FILE', 'id_to_text_map.json'),
-        "DEFAULT_NAMESPACE": os.getenv('DEFAULT_NAMESPACE', 'my_corpus'),
-    }
-    return ENVS
-ENVS = get_environmental_variables()
-print(json.dumps(ENVS, indent=4))
+# def get_environmental_variables():
+#     ENVS = {
+#         "PINECONE_API_KEY": os.getenv('PINECONE_API_KEY'),
+#         "PINECONE_INDEX": os.getenv('PINECONE_INDEX'),
+#         "PINECONE_REGION": os.getenv('PINECONE_REGION'),
+#         "EMBEDDING_MODEL_NAME": os.getenv('EMBEDDING_MODEL_NAME', 'all-MiniLM-L6-v2'),
+#         "DOCS_DIR": os.getenv('DOCS_DIR', '../uploads'),
+#         "NAMESPACE": os.getenv("NAMESPACE", "ikigai_corpus"),
+#         "CHUNK_SIZE_CHARS": int(os.getenv('CHUNK_SIZE_CHARS', 1000)),
+#         "CHUNK_OVERLAP_CHARS": int(os.getenv('CHUNK_OVERLAP_CHARS', 200)),
+#         "BATCH_SIZE": int(os.getenv('BATCH_SIZE', 10)),
+#         "MAPPING_FILE": os.getenv('MAPPING_FILE', 'id_to_text_map.json'),
+#         "DEFAULT_NAMESPACE": os.getenv('DEFAULT_NAMESPACE', 'my_corpus'),
+#     }
+#     return ENVS
+# ENVS = get_environmental_variables()
+# print(json.dumps(ENVS, indent=4))
 
 
 def l2_normalize(vec):
@@ -61,10 +53,10 @@ def embed_and_upsert_docs(
         model: SentenceTransformer,
         pc_index,
         namespace: str = "default",
-        chunk_size: int = ENVS["CHUNK_SIZE_CHARS"],
-        overlap: int = ENVS["CHUNK_OVERLAP_CHARS"],
-        batch_size: int = ENVS["BATCH_SIZE"],
-        save_mapping_path: str = ENVS["MAPPING_FILE"],
+        chunk_size: int = CONFIG.CHUNK_SIZE_CHARS,
+        overlap: int = CONFIG.CHUNK_OVERLAP_CHARS,
+        batch_size: int = CONFIG.BATCH_SIZE,
+        save_mapping_path: str = CONFIG.MAPPING_FILE,
 ):
     id_to_text = {}
     vectors_buffer = []
@@ -100,7 +92,8 @@ def embed_and_upsert_docs(
                 "start_char": int(start),
                 "end_char": int(end),
                 "namespace": namespace,
-                "tokens": chunk_text.lower().split()
+                "tokens": chunk_text.lower().split(),
+                "text": chunk_text
             }
 
             id_to_text[cid] = {
@@ -158,28 +151,30 @@ def embed_and_upsert_batch(texts: List[str], ids: List[str], metadata_list: List
 
 
 def main():
-    pc = Pinecone(api_key=ENVS["PINECONE_API_KEY"])
+    print(f"Loading embedding mode: {CONFIG.EMBEDDING_MODEL_NAME}...")
+    model = SentenceTransformer(CONFIG.EMBEDDING_MODEL_NAME)
+    print("Model loaded.")
+
+    pc = Pinecone(api_key=CONFIG.PINECONE_API_KEY)
 
     print("Listing existing Pinecone indexes...")
     existing = [i["name"] for i in pc.list_indexes()]    
     print(f"Existing indexes: {existing}")
-    if ENVS["PINECONE_INDEX"] not in existing:
+    if CONFIG.PINECONE_INDEX not in existing:
         pc.create_index(
-            name=ENVS["PINECONE_INDEX"],
-            dimension=384,
+            name=CONFIG.PINECONE_INDEX,
+            dimension=model.get_sentence_embedding_dimension(),
             metric="cosine",
-            spec=ServerlessSpec(cloud="aws", region=ENVS["PINECONE_REGION"])
+            spec=ServerlessSpec(cloud="aws", region=CONFIG.PINECONE_REGION)
         )
     else:
-        print(f"Index {ENVS['PINECONE_INDEX']} already exists. Reusing it.")
+        print(f"Index {CONFIG.PINECONE_INDEX} already exists. Reusing it.")
 
-    index = pc.Index(ENVS["PINECONE_INDEX"])
+    index = pc.Index(CONFIG.PINECONE_INDEX)
 
-    print(f"Loading embedding mode: {ENVS['EMBEDDING_MODEL_NAME']}...")
-    model = SentenceTransformer(ENVS["EMBEDDING_MODEL_NAME"])
-    print("Model loaded.")
+    
 
-    doc_dir = Path(ENVS["DOCS_DIR"])
+    doc_dir = Path(CONFIG.DOCS_DIR)
     all_files = [file for file in doc_dir.rglob("*") if file.suffix.lower() in [".txt", ".pdf", ".html", ".htm"]]
     
     print(f"Found {len(all_files)} files to process.")
@@ -189,11 +184,11 @@ def main():
         files=all_files,
         model=model,
         pc_index=index,
-        namespace=ENVS["NAMESPACE"],
-        chunk_size=ENVS["CHUNK_SIZE_CHARS"],
-        overlap=ENVS["CHUNK_OVERLAP_CHARS"],
-        batch_size=ENVS["BATCH_SIZE"],
-        save_mapping_path=ENVS["MAPPING_FILE"]
+        namespace=CONFIG.DEFAULT_NAMESPACE,
+        chunk_size=CONFIG.CHUNK_SIZE_CHARS,
+        overlap=CONFIG.CHUNK_OVERLAP_CHARS,
+        batch_size=CONFIG.BATCH_SIZE,
+        save_mapping_path=CONFIG.MAPPING_FILE
     )
 
 if __name__ == "__main__":  
