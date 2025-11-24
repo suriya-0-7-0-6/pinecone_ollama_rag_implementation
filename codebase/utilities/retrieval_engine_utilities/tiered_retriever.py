@@ -53,6 +53,6 @@ def tiered_retriever(
         tokens = query_text.lower().split()
         scores = bm25.get_scores(tokens)
         best_idx = int(np.argmax(scores))
-        return [(docs_texts_ordered[best_idx], float(scores[best_idx]))], "bm25"
+        return [(docs_texts_ordered[best_idx], float(scores[best_idx]), None)], "bm25"
     
     return [], "none"
