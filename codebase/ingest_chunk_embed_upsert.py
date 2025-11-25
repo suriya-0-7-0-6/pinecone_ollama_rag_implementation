@@ -24,25 +24,6 @@ sys.path.append(str(PROJECT_ROOT))
 from configs.get_envs import CONFIG
 CONFIG.ensure_directories()
 
-# def get_environmental_variables():
-#     ENVS = {
-#         "PINECONE_API_KEY": os.getenv('PINECONE_API_KEY'),
-#         "PINECONE_INDEX": os.getenv('PINECONE_INDEX'),
-#         "PINECONE_REGION": os.getenv('PINECONE_REGION'),
-#         "EMBEDDING_MODEL_NAME": os.getenv('EMBEDDING_MODEL_NAME', 'all-MiniLM-L6-v2'),
-#         "DOCS_DIR": os.getenv('DOCS_DIR', '../uploads'),
-#         "NAMESPACE": os.getenv("NAMESPACE", "ikigai_corpus"),
-#         "CHUNK_SIZE_CHARS": int(os.getenv('CHUNK_SIZE_CHARS', 1000)),
-#         "CHUNK_OVERLAP_CHARS": int(os.getenv('CHUNK_OVERLAP_CHARS', 200)),
-#         "BATCH_SIZE": int(os.getenv('BATCH_SIZE', 10)),
-#         "MAPPING_FILE": os.getenv('MAPPING_FILE', 'id_to_text_map.json'),
-#         "DEFAULT_NAMESPACE": os.getenv('DEFAULT_NAMESPACE', 'my_corpus'),
-#     }
-#     return ENVS
-# ENVS = get_environmental_variables()
-# print(json.dumps(ENVS, indent=4))
-
-
 def l2_normalize(vec):
     vec = np.array(vec)
     return (vec / (np.linalg.norm(vec) + 1e-10)).tolist()
